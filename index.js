@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
+const nodemailer = require("nodemailer");
+const bodyParser = require("body-parser");
 require("dotenv").config();
 
 const app = express();
@@ -11,6 +13,9 @@ app.use(express.json());
 
 const MongoUser = process.env.DB_USER;
 const MongoPass = process.env.DB_PASS;
+const sendGridApiKey = process.env.SENDGRID_API_KEY; // Replace with your SendGrid API key
+const senderEmail = "chirpify9@gmail.com"; // Replace with your sender email address
+
 // console.log("HEYY", MongoUser);
 // console.log("HE", MongoPass);
 const uri = `mongodb+srv://${MongoUser}:${MongoPass}@cluster0.kgq1cs6.mongodb.net/?retryWrites=true&w=majority`;
@@ -40,6 +45,25 @@ async function disconnectFromDatabase() {
   } catch (error) {
     console.error("Error disconnecting from the database:", error);
   }
+}
+
+async function sendEmail(recipient, subject, text) {
+  const transporter = nodemailer.createTransport({
+    service: "SendGrid",
+    auth: {
+      user: "apikey",
+      pass: sendGridApiKey,
+    },
+  });
+
+  const mailOptions = {
+    from: senderEmail,
+    to: recipient,
+    subject: subject,
+    text: text,
+  };
+
+  return transporter.sendMail(mailOptions);
 }
 
 async function run() {
@@ -93,6 +117,21 @@ async function run() {
       const updateDoc = { $set: profile };
       const result = await userCollection.updateOne(filter, updateDoc, options);
       res.send(result);
+    });
+
+    app.post("/sendEmail", async (req, res) => {
+      const { to, subject, text } = req.body;
+
+      try {
+        const result = await sendEmail(to, subject, text);
+        console.log("Email sent successfully:", result);
+        res.send({ success: true, message: "Email sent successfully" });
+      } catch (error) {
+        console.error("Error sending email:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Error sending email" });
+      }
     });
 
     app.get("/", (req, res) => {
