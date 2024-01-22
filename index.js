@@ -4,6 +4,7 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 const nodemailer = require("nodemailer");
 const bodyParser = require("body-parser");
 require("dotenv").config();
+const stripe = require("stripe")(`${process.env.STRIPE_PRIVATE_KEY}`);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -15,7 +16,7 @@ const MongoUser = process.env.DB_USER;
 const MongoPass = process.env.DB_PASS;
 const sendGridApiKey = process.env.SENDGRID_API_KEY; // Replace with your SendGrid API key
 const senderEmail = "chirpify9@gmail.com"; // Replace with your sender email address
-
+// console.log(sendGridApiKey);
 // console.log("HEYY", MongoUser);
 // console.log("HE", MongoPass);
 const uri = `mongodb+srv://${MongoUser}:${MongoPass}@cluster0.kgq1cs6.mongodb.net/?retryWrites=true&w=majority`;
@@ -133,7 +134,23 @@ async function run() {
           .send({ success: false, message: "Error sending email" });
       }
     });
+    app.get("/getStripeClientSecret/:subscriptionType", async (req, res) => {
+      const { subscriptionType } = req.params;
 
+      try {
+        const price = subscriptionType === "silver" ? 100 : 1000;
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: price,
+          currency: "usd",
+        });
+
+        res.json({ clientSecret: paymentIntent.client_secret });
+      } catch (error) {
+        console.error("Error creating PaymentIntent:", error);
+        res.status(500).json({ error: "Error creating PaymentIntent" });
+      }
+    });
     app.get("/", (req, res) => {
       res.send("Hello from Twitter!");
     });
