@@ -143,6 +143,7 @@ async function run() {
         const paymentIntent = await stripe.paymentIntents.create({
           amount: price,
           currency: "usd",
+          description: "Payment proccessed",
         });
 
         res.json({ clientSecret: paymentIntent.client_secret });
@@ -150,6 +151,9 @@ async function run() {
         console.error("Error creating PaymentIntent:", error);
         res.status(500).json({ error: "Error creating PaymentIntent" });
       }
+    });
+    app.get("/success", async (req, res) => {
+      res.send("Payment was successful!");
     });
     app.get("/", (req, res) => {
       res.send("Hello from Twitter!");
