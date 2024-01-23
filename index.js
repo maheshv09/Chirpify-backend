@@ -144,8 +144,6 @@ async function run() {
           amount: price,
           currency: "inr",
           description: "Payment proccessed",
-          name: "abc",
-          address: "xyz",
         });
 
         res.json({ clientSecret: paymentIntent.client_secret });
