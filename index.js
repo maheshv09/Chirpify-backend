@@ -142,7 +142,7 @@ async function run() {
 
         const paymentIntent = await stripe.paymentIntents.create({
           amount: price,
-          currency: "usd",
+          currency: "inr",
           description: "Payment proccessed",
         });
 
