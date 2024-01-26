@@ -4,6 +4,7 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 const nodemailer = require("nodemailer");
 const bodyParser = require("body-parser");
 require("dotenv").config();
+const cron = require("node-cron");
 const stripe = require("stripe")(`${process.env.STRIPE_PRIVATE_KEY}`);
 
 const app = express();
@@ -66,6 +67,28 @@ async function sendEmail(recipient, subject, text) {
 
   return transporter.sendMail(mailOptions);
 }
+
+async function resetTodaysTweets() {
+  try {
+    const client = new MongoClient(uri, {
+      serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+      },
+    });
+    await client.connect();
+    const userCollection = client.db("twitterDB").collection("users");
+
+    // Reset todaysTweets count for all users
+    await userCollection.updateMany({}, { $set: { todaysTweets: 0 } });
+
+    console.log("TodaysTweets count reset successfully.");
+  } catch (error) {
+    console.error("Error resetting todaysTweets count:", error);
+  }
+}
+cron.schedule("0 0 * * *", resetTodaysTweets, { timezone: "Asia/Kolkata" });
 
 async function run() {
   try {
