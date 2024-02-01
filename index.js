@@ -93,7 +93,7 @@ cron.schedule("0 0 * * *", resetTodaysTweets, { timezone: "Asia/Kolkata" });
 async function run() {
   try {
     await connectToDatabase();
-
+    cron.schedule("0 0 * * *", resetTodaysTweets, { timezone: "Asia/Kolkata" });
     const postCollection = client.db("twitterDB").collection("posts");
     //console.log("HeY:", postCollection);
     const userCollection = client.db("twitterDB").collection("users");
