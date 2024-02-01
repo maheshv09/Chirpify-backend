@@ -6,6 +6,8 @@ const bodyParser = require("body-parser");
 require("dotenv").config();
 const cron = require("node-cron");
 const stripe = require("stripe")(`${process.env.STRIPE_PRIVATE_KEY}`);
+const multer = require("multer");
+const upload = multer({ dest: "uploads/" });
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -97,6 +99,9 @@ async function run() {
     const postCollection = client.db("twitterDB").collection("posts");
     //console.log("HeY:", postCollection);
     const userCollection = client.db("twitterDB").collection("users");
+    const premiumRequestsCollection = client
+      .db("twitterDB")
+      .collection("PremiumRequests");
 
     app.get("/getPosts", async (req, res) => {
       const posts = (await postCollection.find().toArray()).reverse();
@@ -133,6 +138,56 @@ async function run() {
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
+
+    // Endpoint for applying for premium verification badge
+    app.post(
+      "/applyForPremiumBadge",
+      upload.single("identityDocument"),
+      async (req, res) => {
+        try {
+          // Extract form data
+          const { name, email, reason, socialMediaProfiles } = req.body;
+          const identityDocument = req.file;
+
+          // Retrieve user data from the database based on the user's email (you can use req.userEmail if you have it available in the request)
+          // Assuming the user's email for the sample user
+          const user = await userCollection.findOne({ email: email });
+
+          if (!user) {
+            return res
+              .status(404)
+              .json({ success: false, message: "User not found" });
+          }
+
+          // Append user information to the premium request data
+          const premiumRequest = {
+            userId: user.userId,
+            name: user.name,
+            email: user.email,
+            reason,
+            socialMediaProfiles,
+            identityDocument: {
+              filename: identityDocument.originalname,
+              contentType: identityDocument.mimetype,
+              data: identityDocument.buffer,
+            },
+          };
+
+          // Store the premium request data in the PremiumRequests collection
+          await premiumRequestsCollection.insertOne(premiumRequest);
+
+          res.status(200).json({
+            success: true,
+            message: "Application submitted successfully",
+          });
+        } catch (error) {
+          console.error("Error submitting application:", error);
+          res
+            .status(500)
+            .json({ success: false, message: "Error submitting application" });
+        }
+      }
+    );
 
     app.patch("/userUpdates/:email", async (req, res) => {
       const filter = req.params;
