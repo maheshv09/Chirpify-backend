@@ -8,6 +8,7 @@ const cron = require("node-cron");
 const stripe = require("stripe")(`${process.env.STRIPE_PRIVATE_KEY}`);
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
+const currentDateTime = new Date();
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -70,28 +71,26 @@ async function sendEmail(recipient, subject, text) {
   return transporter.sendMail(mailOptions);
 }
 
+currentDateTime.setMinutes(currentDateTime.getMinutes() + 1);
+const minute = currentDateTime.getMinutes();
+const hour = currentDateTime.getHours();
 async function resetTodaysTweets() {
-  try {
-    const client = new MongoClient(uri, {
-      serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-      },
-    });
-    await client.connect();
-    const userCollection = client.db("twitterDB").collection("users");
+  const userCollection = client.db("twitterDB").collection("users");
 
-    // Reset todaysTweets count for all users
-    await userCollection.updateMany({}, { $set: { todaysTweets: 0 } });
+  // Reset todaysTweets count for all users
+  await userCollection.updateMany({}, { $set: { todaysTweets: 0 } });
 
-    console.log("TodaysTweets count reset successfully.");
-  } catch (error) {
-    console.error("Error resetting todaysTweets count:", error);
-  }
+  console.log("TodaysTweets count reset successfully.");
+  const email = "vaswani.mahesh2012@gmail.com"; // Change to your email for testing
+  const subject = "TodaysTweets Count Reset";
+  const text = "The todaysTweets count has been reset successfully.";
+  await sendEmail(email, subject, text);
+  console.log("Debug: Email sent after todaysTweets count reset.");
 }
-cron.schedule("0 0 * * *", resetTodaysTweets, { timezone: "Asia/Kolkata" });
-
+cron.schedule("0 0 * * *", resetTodaysTweets, {
+  timezone: "Asia/Kolkata",
+  once: true,
+});
 async function run() {
   try {
     await connectToDatabase();
@@ -236,7 +235,27 @@ async function run() {
     app.get("/", (req, res) => {
       res.send("Hello from Twitter!");
     });
-
+    app.get("/isVerified/:email", async (req, res) => {
+      const verifUser = await userCollection.findOne({
+        email: req.params.email,
+      });
+      console.log("User", req.params.email, verifUser);
+      //res.send("Hello");
+      verifUser.premiumVerificationApplied
+        ? verifUser.premiumVerificationApplied == "approved"
+          ? res.status(200).json({
+              success: true,
+              message: "Verified user",
+            })
+          : res.status(201).json({
+              success: false,
+              message: "Not verified user",
+            })
+        : res.status(201).json({
+            success: false,
+            message: "Not verified user",
+          });
+    });
     app.listen(port, () => {
       console.log(`Twitter listening on port ${port}`);
     });
