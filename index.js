@@ -18,14 +18,11 @@ app.use(express.json());
 
 const MongoUser = process.env.DB_USER;
 const MongoPass = process.env.DB_PASS;
-const sendGridApiKey = process.env.SENDGRID_API_KEY; // Replace with your SendGrid API key
-const senderEmail = "chirpify9@gmail.com"; // Replace with your sender email address
-// console.log(sendGridApiKey);
-// console.log("HEYY", MongoUser);
-// console.log("HE", MongoPass);
+const sendGridApiKey = process.env.SENDGRID_API_KEY;
+const senderEmail = "chirpify9@gmail.com";
+
 const uri = `mongodb+srv://${MongoUser}:${MongoPass}@cluster0.kgq1cs6.mongodb.net/?retryWrites=true&w=majority`;
 
-// Move client creation outside of the run function
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -77,7 +74,6 @@ const hour = currentDateTime.getHours();
 async function resetTodaysTweets() {
   const userCollection = client.db("twitterDB").collection("users");
 
-  // Reset todaysTweets count for all users
   await userCollection.updateMany({}, { $set: { todaysTweets: 0 } });
 
   console.log("TodaysTweets count reset successfully.");
@@ -138,19 +134,14 @@ async function run() {
       res.send(result);
     });
 
-    // Endpoint for applying for premium verification badge
     app.post(
       "/applyForPremiumBadge",
       upload.single("identityDocument"),
       async (req, res) => {
         try {
-          // Extract form data
           const { name, email, reason, socialMediaProfiles, identityDocument } =
             req.body;
-          // const identityDocument = req.file;
 
-          // Retrieve user data from the database based on the user's email (you can use req.userEmail if you have it available in the request)
-          // Assuming the user's email for the sample user
           const user = await userCollection.findOne({ email: email });
 
           if (!user) {
@@ -159,7 +150,6 @@ async function run() {
               .json({ success: false, message: "User not found" });
           }
 
-          // Append user information to the premium request data
           const premiumRequest = {
             userId: user.userId,
             name: user.name,
@@ -167,14 +157,8 @@ async function run() {
             reason,
             socialMediaProfiles,
             identityDocument,
-            // identityDocument: {
-            //   filename: identityDocument.originalname,
-            //   contentType: identityDocument.mimetype,
-            //   data: identityDocument.buffer,
-            // },
           };
 
-          // Store the premium request data in the PremiumRequests collection
           await premiumRequestsCollection.insertOne(premiumRequest);
 
           res.status(200).json({
@@ -242,7 +226,6 @@ async function run() {
         email: req.params.email,
       });
       console.log("User", req.params.email, verifUser);
-      //res.send("Hello");
       verifUser.premiumVerificationApplied
         ? verifUser.premiumVerificationApplied == "approved"
           ? res.status(200).json({
@@ -260,13 +243,10 @@ async function run() {
     });
     app.get("/admin/premiumVerificationRequests", async (req, res) => {
       try {
-        // Fetch premium verification requests
         const requests = await premiumRequestsCollection.find().toArray();
 
-        // Prepare response data
         const data = [];
         for (const request of requests) {
-          // Find corresponding user
           const user = await userCollection.findOne({ email: request.email });
           if (user) {
             data.push({
@@ -291,19 +271,17 @@ async function run() {
         });
       }
     });
-    // Endpoint to mark a premium verification request as approved by email
+
     app.put(
       "/admin/approvePremiumVerificationRequest/:email",
       async (req, res) => {
         const userEmail = req.params.email;
 
         try {
-          // Update premium verification status in premiumRequests collection
           await premiumRequestsCollection.findOneAndDelete({
             email: userEmail,
           });
 
-          // Fetch corresponding user and update premiumVerificationApplied field
           await userCollection.updateOne(
             { email: userEmail },
             { $set: { premiumVerificationApplied: "approved" } }
@@ -328,12 +306,10 @@ async function run() {
         const userEmail = req.params.email;
 
         try {
-          // Update premium verification status in premiumRequests collection
           await premiumRequestsCollection.findOneAndDelete({
             email: userEmail,
           });
 
-          // Fetch corresponding user and update premiumVerificationApplied field
           await userCollection.updateOne(
             { email: userEmail },
             { $set: { premiumVerificationApplied: "rejected" } }
