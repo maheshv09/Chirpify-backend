@@ -145,8 +145,9 @@ async function run() {
       async (req, res) => {
         try {
           // Extract form data
-          const { name, email, reason, socialMediaProfiles } = req.body;
-          const identityDocument = req.file;
+          const { name, email, reason, socialMediaProfiles, identityDocument } =
+            req.body;
+          // const identityDocument = req.file;
 
           // Retrieve user data from the database based on the user's email (you can use req.userEmail if you have it available in the request)
           // Assuming the user's email for the sample user
@@ -165,11 +166,12 @@ async function run() {
             email: user.email,
             reason,
             socialMediaProfiles,
-            identityDocument: {
-              filename: identityDocument.originalname,
-              contentType: identityDocument.mimetype,
-              data: identityDocument.buffer,
-            },
+            identityDocument,
+            // identityDocument: {
+            //   filename: identityDocument.originalname,
+            //   contentType: identityDocument.mimetype,
+            //   data: identityDocument.buffer,
+            // },
           };
 
           // Store the premium request data in the PremiumRequests collection
@@ -256,6 +258,100 @@ async function run() {
             message: "Not verified user",
           });
     });
+    app.get("/admin/premiumVerificationRequests", async (req, res) => {
+      try {
+        // Fetch premium verification requests
+        const requests = await premiumRequestsCollection.find().toArray();
+
+        // Prepare response data
+        const data = [];
+        for (const request of requests) {
+          // Find corresponding user
+          const user = await userCollection.findOne({ email: request.email });
+          if (user) {
+            data.push({
+              requestId: request._id,
+              userId: user.userId,
+              name: user.name,
+              email: user.email,
+              reason: request.reason,
+              socialMediaProfiles: request.socialMediaProfiles,
+              identityDocument: request.identityDocument,
+              premiumVerificationApplied: user.premiumVerificationApplied,
+            });
+          }
+        }
+
+        res.status(200).json({ success: true, data });
+      } catch (error) {
+        console.error("Error fetching premium verification requests:", error);
+        res.status(500).json({
+          success: false,
+          message: "Error fetching premium verification requests",
+        });
+      }
+    });
+    // Endpoint to mark a premium verification request as approved by email
+    app.put(
+      "/admin/approvePremiumVerificationRequest/:email",
+      async (req, res) => {
+        const userEmail = req.params.email;
+
+        try {
+          // Update premium verification status in premiumRequests collection
+          await premiumRequestsCollection.updateOne(
+            { email: userEmail },
+            { $set: { status: "approved" } }
+          );
+
+          // Fetch corresponding user and update premiumVerificationApplied field
+          await userCollection.updateOne(
+            { email: userEmail },
+            { $set: { premiumVerificationApplied: "approved" } }
+          );
+
+          res.status(200).json({
+            success: true,
+            message: "Premium verification request approved",
+          });
+        } catch (error) {
+          console.error("Error approving premium verification request:", error);
+          res.status(500).json({
+            success: false,
+            message: "Error approving premium verification request",
+          });
+        }
+      }
+    );
+    app.put(
+      "/admin/rejectPremiumVerificationRequest/:email",
+      async (req, res) => {
+        const userEmail = req.params.email;
+
+        try {
+          // Update premium verification status in premiumRequests collection
+          await premiumRequestsCollection.deleteOne({ email: userEmail });
+
+          // Fetch corresponding user and update premiumVerificationApplied field
+          await userCollection.updateOne(
+            { email: userEmail },
+            { $set: { premiumVerificationApplied: "rejected" } }
+          );
+
+          res.status(200).json({
+            success: true,
+            message: "Premium verification request approved",
+          });
+        } catch (error) {
+          console.error("Error approving premium verification request:", error);
+          res.status(500).json({
+            success: false,
+            message: "Error approving premium verification request",
+          });
+        }
+      }
+    );
+
     app.listen(port, () => {
       console.log(`Twitter listening on port ${port}`);
     });
