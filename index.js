@@ -299,10 +299,9 @@ async function run() {
 
         try {
           // Update premium verification status in premiumRequests collection
-          await premiumRequestsCollection.updateOne(
-            { email: userEmail },
-            { $set: { status: "approved" } }
-          );
+          await premiumRequestsCollection.findOneAndDelete({
+            email: userEmail,
+          });
 
           // Fetch corresponding user and update premiumVerificationApplied field
           await userCollection.updateOne(
@@ -330,7 +329,9 @@ async function run() {
 
         try {
           // Update premium verification status in premiumRequests collection
-          await premiumRequestsCollection.deleteOne({ email: userEmail });
+          await premiumRequestsCollection.findOneAndDelete({
+            email: userEmail,
+          });
 
           // Fetch corresponding user and update premiumVerificationApplied field
           await userCollection.updateOne(
@@ -340,13 +341,13 @@ async function run() {
 
           res.status(200).json({
             success: true,
-            message: "Premium verification request approved",
+            message: "Premium verification request rejected",
           });
         } catch (error) {
-          console.error("Error approving premium verification request:", error);
+          console.error("Error rejecting premium verification request:", error);
           res.status(500).json({
             success: false,
-            message: "Error approving premium verification request",
+            message: "Error rejecting premium verification request",
           });
         }
       }
