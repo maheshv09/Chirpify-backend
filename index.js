@@ -182,6 +182,27 @@ async function run() {
       const result = await userCollection.updateOne(filter, updateDoc, options);
       res.send(result);
     });
+    // Assuming you have initialized your express app
+    app.patch("/cancelSubscription/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        // Assuming you are using a MongoDB or similar database
+        const user = await userCollection.findOneAndUpdate(
+          { email },
+          {
+            $unset: { subscriptionType: "" },
+            $set: { allowedTweets: 1, todaysTweets: 0 },
+          }
+        );
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        res.status(200).json({ message: "Subscription canceled successfully" });
+      } catch (error) {
+        console.error("Error canceling subscription:", error);
+        res.status(500).json({ error: "Failed to cancel subscription" });
+      }
+    });
 
     app.post("/sendEmail", async (req, res) => {
       const { to, subject, text } = req.body;
